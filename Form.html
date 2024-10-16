@@ -1,0 +1,286 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 0;
+        background-color: #f4f4f4;
+      }
+      h3 {
+        color: #333;
+      }
+      label {
+        display: block;
+        margin: 10px 0 5px;
+      }
+      input, select {
+        width: calc(100% - 22px);
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      input[type="button"] {
+        padding: 10px 20px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      input[type="button"]:hover {
+        background-color: #45a049;
+      }
+      .form-wrapper {
+        height: 73vh;
+        overflow-y: scroll;
+        margin: 0 0 1rem;
+        padding: 8px 12px;
+        scrollbar-width: thin;
+      }
+      #status {
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+
+      @keyframes shake {
+          0% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          50% { transform: translateX(5px); }
+          75% { transform: translateX(-5px); }
+          100% { transform: translateX(0); }
+      }
+      @keyframes fadeIn {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
+      }
+
+      /* Class to apply the fade-in effect */
+      .fade-in {
+          animation: fadeIn 0.3s ease-out;
+      }
+      .shake {
+          animation: shake 0.3s;
+      }
+      .add-new-input {
+        display: block;
+        width: calc(100% - 22px);
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>Job Application Tracker</h3>
+    <div id="status" class="fade-in">Getting Ready...</div>
+    <form id="applicationForm">
+      <div class="form-wrapper">
+        <label for="platform">Platform:<span style="color: red">*</span></label>
+        <select id="platform" name="platform"></select>
+
+        <label for="jobLink">Job Link:</label>
+        <input type="url" id="jobLink" name="jobLink" placeholder="Job Posting URL">
+
+        <label for="jobTitle">Job Title:<span style="color: red">*</span></label>
+        <input type="text" id="jobTitle" name="jobTitle" placeholder="Job Title..." required>
+
+        <label for="company">Company:<span style="color: red">*</span></label>
+        <input type="text" id="company" name="company" placeholder="Comapny..." required>
+
+        <label for="resume">Resume:</label>
+        <select id="resume" name="resume"></select>
+
+        <label for="coverLetter">Cover Letter:</label>
+        <input id="coverLetter" name="coverLetter" placeholder="Cover Letter link"></input>
+
+        <label for="comment">Comment:</label>
+        <input type="text" id="comment" name="comment" placeholder="Any Comments?"></input>
+      </div>
+
+      <input type="button" value="Submit" onclick="submitForm()">
+    </form>
+
+    <script> 
+      var options = null;
+      var optionChange = false;
+
+      // All the input elements (text and select)
+      var platformSelect = document.getElementById('platform');
+      var resumeSelect = document.getElementById('resume');
+      
+      var jobLinkInput = document.getElementById("jobLink");
+      var jobTitleInput = document.getElementById('jobTitle');
+      var companyInput = document.getElementById('company');
+      var coverLetterInput = document.getElementById('coverLetter');
+      var commentInput = document.getElementById('comment');
+
+      var statusDiv = document.getElementById('status');
+
+      
+
+      function updateStatus(status, color, effect) {
+        statusDiv.classList = "";
+        statusDiv.textContent = status;
+        statusDiv.setAttribute("style", `color: ${color};`);
+        // Force a reflow to restart the animation
+        statusDiv.offsetWidth; // Accessing this property forces a reflow
+        statusDiv.classList.add(effect);
+      }
+
+      // Populate dropdowns
+      function populateDropdowns() {
+
+        // Update status
+        updateStatus("Getting Ready...", "orange", "fade-in");
+
+
+        // Function to create dropdown options
+        function populateSelect(selectElement, selectOptions, type) {
+
+          // Clearing existing options
+          selectElement.innerHTML = "";
+          selectElement.removeEventListener('change', addNewInputCreator);
+
+          // Adding blank option
+          var blankOpt = document.createElement('option');
+          blankOpt.value = '';
+          blankOpt.textContent = '';
+          selectElement.appendChild(blankOpt);
+          
+
+          // Add input for "Add new..." option
+          var addNewOpt = document.createElement('option');
+          addNewOpt.value = 'add_new';
+          addNewOpt.textContent = 'Add new...';
+          selectElement.appendChild(addNewOpt);
+
+          selectOptions.forEach(function(option) {
+            if (option.trim()) {
+              var opt = document.createElement('option');
+              opt.value = opt.textContent = option;
+              selectElement.appendChild(opt);
+            }
+          });
+
+          
+          function addNewInputCreator() {
+            
+            if (selectElement.value === 'add_new') {
+              if (!document.getElementById('new-' + type)) {
+                var input = document.createElement('input');
+                input.type = 'text';
+                input.id = 'new-' + type;
+                input.className = 'add-new-input';
+                input.placeholder = 'Enter new ' + type;
+
+                selectElement.parentNode.insertBefore(input, selectElement.nextSibling);
+              }
+            }
+            else {
+              document.getElementById(`new-${type}`).remove();
+            }
+            
+
+            
+          }
+
+          // Event listener for "Add new..." option
+          selectElement.addEventListener('change', addNewInputCreator);
+        }   
+
+        // Populate dropdowns
+        function populateSelectRoutine() {
+          populateSelect(platformSelect, options.platforms, 'platform');
+          populateSelect(resumeSelect, options.resumes, 'resume');
+          platformSelect.value = "";
+        }
+        
+        // Calling backend only if the options is null, i.e. in the start
+        if (options == null) {
+          google.script.run.withSuccessHandler(
+            function(optionsFromSheet) {
+              options = optionsFromSheet; 
+              populateSelectRoutine(); 
+              updateStatus("Ready...!", "green", "fade-in");          
+            }
+          ).getDropdownOptions();
+        } else if (optionChange) {
+          optionChange = false;
+          populateSelectRoutine();
+        }
+
+      }
+
+   
+      // Submit form
+      function submitForm() {
+        // Get form data
+        var formData = {
+          platform: platformSelect.value.trim(),
+          jobLink: jobLinkInput.value.trim(),
+          jobTitle: jobTitleInput.value.trim(),
+          company: companyInput.value.trim(),
+          resume: resumeSelect.value.trim(),
+          coverLetter: coverLetterInput.value.trim(),
+          comment: commentInput.value.trim(),
+        }
+
+        // Data Validation
+        if(!formData.platform) {
+          updateStatus("Please specify the Platform.", "red", "shake");
+          return;
+        }
+        if(!formData.jobTitle) {
+          updateStatus("Please add the Job Title.", "red", "shake");
+          return;
+        }
+        if(!formData.company) {
+          updateStatus("Please add the Company Name.", "red", "shake");
+          return;
+        }
+        
+        updateStatus(`Recording Application...`, "dodgerblue", "fade-in");
+
+        if (formData.platform == 'add_new') {
+          formData.platform = document.getElementById('new-platform').value.trim();                 
+          addNewOption('platforms', formData.platform);
+          document.getElementById('new-platform').remove();
+        } 
+        if (formData.resume == 'add_new') {
+          formData.resume = document.getElementById('new-resume').value.trim();
+          addNewOption('resumes', formData.resume);
+          document.getElementById('new-resume').remove();
+        } 
+        
+        console.log(formData);
+
+        // Call Apps Script function to process the form data
+        google.script.run.withSuccessHandler(function(response) {
+          // alert(response); // Show success message
+          document.getElementById("applicationForm").reset(); // Clear form after submission
+          populateDropdowns(); // Update dropdowns after submission
+          updateStatus(`Application at ${formData.company} recorded.`, "blue", "fade-in");
+          setTimeout(() => {
+              updateStatus("Ready...!", "green", "fade-in");
+          }, 3000);
+        }).submitApplication(formData);
+      }
+
+      // Adding a new option to the options available localy 
+      function addNewOption(type, option) {
+        optionChange = true;
+        options[type].unshift(option);
+      }
+      
+      // Initialize the dropdowns on load
+      window.onload = function() {
+        populateDropdowns();
+      };
+    </script> 
+  </body>
+</html>
